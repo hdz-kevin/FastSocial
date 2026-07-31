@@ -13,6 +13,7 @@ from app.config import DATABASE_URL
 class Base(DeclarativeBase):
     pass
 
+
 class Post(Base):
     __tablename__ = "posts"
 

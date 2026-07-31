@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile, Depends, Form
 from app.schemas import PostCreate, PostResponse
 from app.database import Post, create_db_and_tables, get_async_session
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,37 +14,20 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-text_posts = {
-    1: {"title": "My first post her", "content": "This is my first post here, am so excited"},
-    2: {"title": "My second post her", "content": "This is my second post here"},
-    3: {"title": "Hello everyone", "content": "Fuck, am so happy :)"},
-    4: {"title": "Learning FastAPI", "content": "Just started building APIs with FastAPI and it's blazing fast"},
-    5: {"title": "Weekend vibes", "content": "Nothing beats a lazy Sunday with coffee and code"},
-    6: {"title": "Food review", "content": "Tried that new ramen spot downtown, absolutely delicious"},
-    7: {"title": "Gym progress", "content": "Hit a new personal record on deadlift today, feeling strong"},
-    8: {"title": "Movie night", "content": "Finally watched Dune Part Two, the visuals were insane"},
-    9: {"title": "Travel plans", "content": "Booking flights to Japan next month, can't wait for the cherry blossoms"},
-    10: {"title": "Project update", "content": "Deployed the new feature to production, smooth sailing so far"},
-}
+@app.post("/upload")
+async def upload_post(
+    file: UploadFile = File(...),
+    caption: str = Form(...),
+    session: AsyncSession = Depends(get_async_session),
+):
+    post = Post(caption=caption, url="dummy_url", file_type="photo", file_name="dummy name")
 
+    # Prepare the post object to be added to the database
+    session.add(post)
+    # Write the post to the database
+    await session.commit()
+    # Refresh the post object to get the auto-generated fields (like id) from the database
+    await session.refresh(post)
 
-@app.get("/posts")
-def get_all_posts(limit: int = None):
-    if limit:
-        return list(text_posts.values())[:limit]
-    return text_posts
+    return post
 
-
-@app.get("/posts/{id}")
-def get_post(id: int) -> PostResponse:
-    if id not in text_posts:
-        raise HTTPException(404, "Post not found")
-
-    return text_posts[id]
-
-
-@app.post("/posts")
-def create_post(post: PostCreate) -> PostResponse:
-    new_post = {"title": post.title, "content": post.content}
-    text_posts[max(text_posts.keys()) + 1] = new_post
-    return new_post
